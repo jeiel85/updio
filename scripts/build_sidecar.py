@@ -22,7 +22,7 @@ def get_target_triple():
         return "x86_64-unknown-linux-gnu"
 
 def build_sidecar():
-    print("🚀 Starting Sidecar Build Process...")
+    print("Starting Sidecar Build Process...")
     
     triple = get_target_triple()
     app_name = "vibe-engine"
@@ -34,7 +34,7 @@ def build_sidecar():
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    print(f"📦 Bundling Python script with PyInstaller for {triple}...")
+    print(f"Bundling Python script with PyInstaller for {triple}...")
     
     # Run PyInstaller
     # --onefile: Single executable
@@ -52,12 +52,12 @@ def build_sidecar():
             "--specpath", "build/pyinstaller",
             script_path
         ], check=True)
-        print(f"✅ Sidecar built successfully: {output_dir}/{sidecar_name}")
+        print(f"Sidecar built successfully: {output_dir}/{sidecar_name}")
     except FileNotFoundError:
-        print("❌ Error: PyInstaller not found. Please run 'pip install pyinstaller'.")
+        print("Error: PyInstaller not found. Please run 'pip install pyinstaller'.")
         sys.exit(1)
     except subprocess.CalledProcessError as e:
-        print(f"❌ Error: PyInstaller failed with exit code {e.returncode}")
+        print(f"Error: PyInstaller failed with exit code {e.returncode}")
         sys.exit(1)
 
 if __name__ == "__main__":

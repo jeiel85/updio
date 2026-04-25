@@ -7,7 +7,7 @@ import shutil
 from pathlib import Path
 
 # Vibe Video Upscaler - AI Sidecar Core
-# Fixed: Handled Unicode (Korean, Japanese, etc.) file paths correctly on Windows
+# Fixed: Reverted to high-compatibility mode based on v0.1.0 success
 
 # Global paths for FFmpeg/FFprobe
 FFMPEG_EXE = "ffmpeg"
@@ -23,16 +23,18 @@ def log_progress(current, total, message):
 
 def run_command(args):
     """
-    Runs a command as a list of arguments to avoid shell encoding issues.
-    Why: shell=True with string commands often breaks on non-ASCII characters in Windows.
+    Handles Unicode file paths using list-based arguments.
+    Secure against Windows shell encoding issues.
     """
+    # In bundled app, sidecars are often in the same directory or PATH
     process = subprocess.Popen(
         args,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
-        shell=False, # Secure and handles Unicode paths directly
+        shell=False,
         text=True,
-        encoding='utf-8' # Explicitly use UTF-8
+        encoding='utf-8',
+        errors='replace' # Prevent crash on decoding
     )
     stdout, stderr = process.communicate()
     if process.returncode != 0:
@@ -46,7 +48,6 @@ def extract_frames(input_path, temp_dir):
     
     log_progress(0, 100, "Extracting frames...")
     
-    # Use list for arguments to protect Unicode paths
     probe_args = [
         FFPROBE_EXE, "-v", "error", "-select_streams", "v:0", 
         "-count_packets", "-show_entries", "stream=nb_read_packets", 
@@ -75,7 +76,6 @@ def upscale_frames(frames_dir, output_frames_dir, scale, model_type):
     for i, frame_file in enumerate(frame_files):
         src = os.path.join(frames_dir, frame_file)
         dst = os.path.join(output_frames_dir, frame_file)
-        # Internal shutil operations are Unicode-safe in Python 3
         shutil.copy(src, dst)
         if i % 10 == 0 or i == total - 1:
             log_progress(i + 1, total, f"Upscaling: {frame_file}")
@@ -88,7 +88,10 @@ def merge_frames(output_frames_dir, input_video, output_path):
         "-show_entries", "stream=r_frame_rate", 
         "-of", "default=noprint_wrappers=1:nokey=1", input_video
     ]
-    fps = run_command(fps_args).strip()
+    try:
+        fps = run_command(fps_args).strip()
+    except:
+        fps = "30" # Default fallback
     
     audio_temp = os.path.join(os.path.dirname(output_path), "temp_audio.m4a")
     has_audio = False
@@ -125,10 +128,22 @@ def main():
     parser.add_argument("--ffprobe", default="ffprobe")
     
     args = parser.parse_args()
-    FFMPEG_EXE = args.ffmpeg
-    FFPROBE_EXE = args.ffprobe
+    # Try to find ffmpeg next to the sidecar executable if just name passed
+    executable_dir = os.path.dirname(sys.executable)
     
-    temp_dir = os.path.join(os.path.dirname(args.output), "vibe_temp_workspace")
+    def resolve_exe(exe_name):
+        # 1. Check direct path or same dir
+        target = os.path.join(executable_dir, f"{exe_name}.exe")
+        if os.path.exists(target): return target
+        # 2. Check current working dir
+        if os.path.exists(f"{exe_name}.exe"): return f"{exe_name}.exe"
+        # 3. Use PATH
+        return exe_name
+
+    FFMPEG_EXE = resolve_exe(args.ffmpeg)
+    FFPROBE_EXE = resolve_exe(args.ffprobe)
+    
+    temp_dir = os.path.join(os.path.dirname(args.output), "vibe_workspace")
     
     try:
         frames_dir, total_frames = extract_frames(args.input, temp_dir)
@@ -137,7 +152,6 @@ def main():
         merge_frames(output_frames_dir, args.input, args.output)
         log_progress(100, 100, "Done! Video upscaled successfully.")
     except Exception as e:
-        # Final safety: Print error as JSON
         print(json.dumps({"error": str(e)}), file=sys.stderr)
         sys.exit(1)
     finally:

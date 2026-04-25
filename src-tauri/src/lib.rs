@@ -1,4 +1,4 @@
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Emitter};
 use tauri_plugin_shell::ShellExt;
 use tauri_plugin_shell::process::CommandEvent;
 use serde::{Serialize, Deserialize};
@@ -24,25 +24,21 @@ async fn start_upscale(
     scale: u32,
     model: String,
 ) -> Result<(), String> {
-    // Attempt to spawn the sidecar engine
-    // We pass "ffmpeg" and "ffprobe" as strings. 
-    // In a bundled app, Tauri sets up the environment so sidecars can call each other.
+    // Revert to 0.1.0-style simple sidecar call
     let sidecar_command = app
         .shell()
         .sidecar("vibe-engine")
-        .map_err(|e| format!("Failed to find vibe-engine sidecar: {}", e))?
+        .map_err(|e| e.to_string())?
         .args([
             "--input", &input, 
             "--output", &output, 
             "--scale", &scale.to_string(), 
-            "--model", &model,
-            "--ffmpeg", "ffmpeg", 
-            "--ffprobe", "ffprobe",
+            "--model", &model
         ]);
 
     let (mut rx, _child) = sidecar_command
         .spawn()
-        .map_err(|e| format!("Failed to spawn sidecar: {}", e))?;
+        .map_err(|e| e.to_string())?;
 
     tauri::async_runtime::spawn(async move {
         while let Some(event) = rx.recv().await {
@@ -73,17 +69,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_updater::Builder::new().build())
-        .setup(|app| {
-            // Enable devtools in production for debugging if needed (Optional, but helps for "no response" issues)
-            #[cfg(debug_assertions)]
-            {
-                app.handle().plugin(
-                    tauri_plugin_log::Builder::default()
-                        .level(log::LevelFilter::Info)
-                        .build(),
-                )?;
-            }
+        .setup(|_app| {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![start_upscale])

@@ -8,7 +8,7 @@ import platform
 from pathlib import Path
 
 # Vibe Video Upscaler - AI Sidecar Core
-# Fix: Proper Sidecar resolution for FFmpeg/FFprobe on Windows
+# Improved: Robust path resolution for local development and production
 
 # Global paths for FFmpeg/FFprobe
 FFMPEG_EXE = "ffmpeg"
@@ -23,9 +23,6 @@ def log_progress(current, total, message):
     }), flush=True)
 
 def run_command(args):
-    """
-    Runs a command as a list of arguments to avoid shell encoding issues.
-    """
     try:
         process = subprocess.Popen(
             args,
@@ -38,10 +35,10 @@ def run_command(args):
         )
         stdout, stderr = process.communicate()
         if process.returncode != 0:
-            raise Exception(f"Subprocess failed with code {process.returncode}: {stderr}")
+            raise Exception(f"FFmpeg Error: {stderr.strip()}")
         return stdout
     except FileNotFoundError:
-        raise Exception(f"Executable not found: {args[0]}. Please ensure FFmpeg is correctly bundled.")
+        raise Exception(f"Executable '{args[0]}' not found. Please install FFmpeg or check sidecar bundling.")
     except Exception as e:
         raise Exception(f"Execution error: {str(e)}")
 
@@ -63,7 +60,7 @@ def extract_frames(input_path, temp_dir):
         total_frames = 100 
     
     extract_args = [
-        FFMPEG_EXE, "-i", input_path, "-qscale:v", "2", 
+        FFMPEG_EXE, "-y", "-i", input_path, "-qscale:v", "2", 
         os.path.join(frames_dir, "%08d.jpg")
     ]
     run_command(extract_args)
@@ -97,11 +94,11 @@ def merge_frames(output_frames_dir, input_video, output_path):
     except:
         fps = "30"
     
-    audio_temp = os.path.join(os.path.dirname(output_path), "temp_audio.m4a")
+    audio_temp = os.path.join(os.path.dirname(output_path), "temp_audio_src.m4a")
     has_audio = False
     try:
         run_command([FFMPEG_EXE, "-y", "-i", input_video, "-vn", "-acodec", "copy", audio_temp])
-        has_audio = True
+        has_audio = True if os.path.exists(audio_temp) and os.path.getsize(audio_temp) > 0 else False
     except:
         has_audio = False
     
@@ -118,8 +115,35 @@ def merge_frames(output_frames_dir, input_video, output_path):
     
     run_command(merge_args)
     
-    if has_audio and os.path.exists(audio_temp):
+    if os.path.exists(audio_temp):
         os.remove(audio_temp)
+
+def find_executable(name):
+    """
+    Search order:
+    1. System PATH (Best for local development)
+    2. Tauri Sidecar format in the current executable directory
+    3. Same directory as the executable
+    """
+    # 1. Check system PATH
+    path_exe = shutil.which(name)
+    if path_exe:
+        return path_exe
+        
+    # 2. Check Tauri Sidecar directory (for production)
+    exe_dir = os.path.dirname(sys.executable)
+    triples = ["x86_64-pc-windows-msvc", "aarch64-pc-windows-msvc"]
+    for triple in triples:
+        sidecar_path = os.path.join(exe_dir, f"{name}-{triple}.exe")
+        if os.path.exists(sidecar_path):
+            return sidecar_path
+            
+    # 3. Check same directory without triple
+    direct_path = os.path.join(exe_dir, f"{name}.exe")
+    if os.path.exists(direct_path):
+        return direct_path
+        
+    return name # Fallback to name and let it fail gracefully in run_command
 
 def main():
     global FFMPEG_EXE, FFPROBE_EXE
@@ -133,24 +157,8 @@ def main():
     
     args = parser.parse_args()
     
-    # Critical: In Tauri, sidecars are renamed to {name}-{triple}.exe
-    # We must try to find the correct sidecar file in the executable's directory.
-    exe_dir = os.path.dirname(sys.executable)
-    
-    def find_tauri_sidecar(base_name):
-        # List of potential triples
-        triples = ["x86_64-pc-windows-msvc", "aarch64-pc-windows-msvc"]
-        for triple in triples:
-            path = os.path.join(exe_dir, f"{base_name}-{triple}.exe")
-            if os.path.exists(path):
-                return path
-        # Fallback to plain name or path
-        if os.path.exists(os.path.join(exe_dir, f"{base_name}.exe")):
-            return os.path.join(exe_dir, f"{base_name}.exe")
-        return base_name
-
-    FFMPEG_EXE = find_tauri_sidecar("ffmpeg")
-    FFPROBE_EXE = find_tauri_sidecar("ffprobe")
+    FFMPEG_EXE = find_executable(args.ffmpeg)
+    FFPROBE_EXE = find_executable(args.ffprobe)
     
     temp_dir = os.path.join(os.path.dirname(args.output), "vibe_workspace")
     
@@ -159,10 +167,8 @@ def main():
         output_frames_dir = os.path.join(temp_dir, "output_frames")
         upscale_frames(frames_dir, output_frames_dir, args.scale, args.model)
         merge_frames(output_frames_dir, args.input, args.output)
-        log_progress(100, 100, "Done! Video upscaled successfully.")
+        log_progress(100, 100, "Done!")
     except Exception as e:
-        # Print error message cleanly without JSON wrapping to avoid double encoding issues in UI
-        # But for Tauri to catch it properly as error, we write to stderr
         sys.stderr.write(str(e))
         sys.exit(1)
     finally:

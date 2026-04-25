@@ -46,8 +46,16 @@ export default function Home() {
 
     const unlistenFinished = listen<number | null>("upscale-finished", (event) => {
       setIsProcessing(false);
-      setIsFinished(true);
-      setProgress({ current: 100, total: 100, percentage: 100, message: t("completed") });
+      const exitCode = event.payload;
+      if (exitCode === 0) {
+        setIsFinished(true);
+        setProgress({ current: 100, total: 100, percentage: 100, message: t("completed") });
+      } else {
+        // If not zero, it's an error. The error message should have been caught by upscale-error
+        // but we'll ensure the UI knows it's not finished successfully.
+        setIsFinished(false);
+        if (!error) setError(`Process exited with code ${exitCode}`);
+      }
     });
 
     return () => {

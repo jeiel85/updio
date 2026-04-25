@@ -39,3 +39,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# tauri build artifacts
+/src-tauri/target/
+/ffmpeg.zip
+/ffmpeg_temp/
+
+# large generated binaries (CI downloads/builds these)
+/src-tauri/binaries/ffmpeg-*.exe
+/src-tauri/binaries/ffprobe-*.exe

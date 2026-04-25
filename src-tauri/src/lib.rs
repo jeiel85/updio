@@ -1,4 +1,4 @@
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_shell::ShellExt;
 use tauri_plugin_shell::process::CommandEvent;
 use serde::{Serialize, Deserialize};
@@ -16,6 +16,27 @@ struct ErrorPayload {
     message: String,
 }
 
+fn find_sidecar_binary(app: &AppHandle, name: &str) -> String {
+    if let Ok(resource_dir) = app.path().resource_dir() {
+        // Dev mode: resource_dir is src-tauri/, binaries are in binaries/ subdir with triple suffix
+        let dev_path = resource_dir
+            .join("binaries")
+            .join(format!("{}-x86_64-pc-windows-msvc.exe", name));
+        if dev_path.exists() {
+            return dev_path.to_string_lossy().to_string();
+        }
+
+        // Release mode: Tauri strips the triple suffix during bundling
+        let release_path = resource_dir.join(format!("{}.exe", name));
+        if release_path.exists() {
+            return release_path.to_string_lossy().to_string();
+        }
+    }
+
+    // Final fallback: hope it's in PATH
+    name.to_string()
+}
+
 #[tauri::command]
 async fn start_upscale(
     app: AppHandle,
@@ -24,15 +45,20 @@ async fn start_upscale(
     scale: u32,
     model: String,
 ) -> Result<(), String> {
+    let ffmpeg_path = find_sidecar_binary(&app, "ffmpeg");
+    let ffprobe_path = find_sidecar_binary(&app, "ffprobe");
+
     let sidecar_command = app
         .shell()
         .sidecar("vibe-engine")
         .map_err(|e| e.to_string())?
         .args([
-            "--input", &input, 
-            "--output", &output, 
-            "--scale", &scale.to_string(), 
-            "--model", &model
+            "--input", &input,
+            "--output", &output,
+            "--scale", &scale.to_string(),
+            "--model", &model,
+            "--ffmpeg", &ffmpeg_path,
+            "--ffprobe", &ffprobe_path,
         ]);
 
     let (mut rx, _child) = sidecar_command
@@ -50,7 +76,6 @@ async fn start_upscale(
                 }
                 CommandEvent::Stderr(line) => {
                     let line_str = String::from_utf8_lossy(&line);
-                    // Emit raw stderr for direct display (already contains the error message)
                     let _ = app.emit("upscale-error", ErrorPayload { message: line_str.to_string() });
                 }
                 CommandEvent::Terminated(payload) => {

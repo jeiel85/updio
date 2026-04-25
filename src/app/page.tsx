@@ -263,7 +263,7 @@ export default function Home() {
       </div>
 
       <footer className="mt-8 text-slate-500 text-xs flex items-center gap-4">
-        <p>Vibe Video Upscaler v0.1.2</p>
+        <p>Vibe Video Upscaler v0.2.0</p>
         <div className="w-1 h-1 bg-slate-800 rounded-full" />
         <p>Multi-language & FFmpeg Bundled</p>
       </footer>

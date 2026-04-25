@@ -41,6 +41,13 @@ def build_sidecar():
     # --noconsole: No terminal window
     # --name: Specific name for the binary
     # --distpath: Where to put the final binary
+    # --add-data: Bundle the upscalers and models
+    
+    # Path separators: ; on Windows, : on Unix
+    sep = ";" if sys.platform == "win32" else ":"
+    absolute_bin_path = os.path.abspath("src-python/bin")
+    bin_data = f"{absolute_bin_path}{sep}."
+    
     try:
         subprocess.run([
             "pyinstaller",
@@ -50,6 +57,7 @@ def build_sidecar():
             "--distpath", output_dir,
             "--workpath", "build/pyinstaller",
             "--specpath", "build/pyinstaller",
+            "--add-data", bin_data,
             script_path
         ], check=True)
         print(f"Sidecar built successfully: {output_dir}/{sidecar_name}")

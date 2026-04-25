@@ -48,3 +48,6 @@ next-env.d.ts
 # large generated binaries (CI downloads/builds these)
 /src-tauri/binaries/ffmpeg-*.exe
 /src-tauri/binaries/ffprobe-*.exe
+/src-tauri/binaries/vibe-engine-*.exe
+/src-python/bin/
+/temp_binaries/

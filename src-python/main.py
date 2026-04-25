@@ -104,22 +104,99 @@ def extract_frames(input_path, temp_dir):
     
     return frames_dir, total_frames
 
+def get_resource_path(relative_path):
+    """ Get absolute path to resource, works for dev and for PyInstaller """
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "bin"))
+
+    return os.path.join(base_path, relative_path)
+
 def upscale_frames(frames_dir, output_frames_dir, scale, model_type):
     os.makedirs(output_frames_dir, exist_ok=True)
     frame_files = sorted(os.listdir(frames_dir))
     total = len(frame_files)
     
     # Progress range: 5% to 90%
-    log_progress(0, total, f"Upscaling frames (Scale: {scale}x)...", percentage=5)
+    log_progress(0, total, f"Upscaling frames (Scale: {scale}x, Model: {model_type})...", percentage=5)
     
-    for i, frame_file in enumerate(frame_files):
-        src = os.path.join(frames_dir, frame_file)
-        dst = os.path.join(output_frames_dir, frame_file)
-        shutil.copy(src, dst) # Placeholder for actual AI upscaling
+    # Determine which binary to use
+    if "cugan" in model_type:
+        upscaler_exe = get_resource_path(os.path.join("realcugan", "realcugan-ncnn-vulkan.exe"))
         
-        if i % 10 == 0 or i == total - 1:
-            p = 5 + (85 * (i + 1) / total)
-            log_progress(i + 1, total, f"Upscaling: {frame_file}", percentage=p)
+        # Real-CUGAN models are in subfolders like models-se, models-pro, models-nose
+        model_name = "models-se" # Default
+        if "pro" in model_type:
+            model_name = "models-pro"
+        elif "nose" in model_type:
+            model_name = "models-nose"
+            
+        models_path = get_resource_path(os.path.join("realcugan", model_name))
+        
+        cmd = [
+            upscaler_exe,
+            "-i", frames_dir,
+            "-o", output_frames_dir,
+            "-s", str(scale),
+            "-m", models_path,
+            "-f", "jpg"
+        ]
+    else:
+        upscaler_exe = get_resource_path("realesrgan-ncnn-vulkan.exe")
+        models_path = get_resource_path("models")
+        
+        # Real-ESRGAN command: realesrgan-ncnn-vulkan.exe -i input -o output -s scale -n model_name -m models
+        cmd = [
+            upscaler_exe,
+            "-i", frames_dir,
+            "-o", output_frames_dir,
+            "-s", str(scale),
+            "-n", model_type,
+            "-m", models_path,
+            "-f", "jpg" # Output format
+        ]
+
+    # Run the upscaler
+    # Note: These NCNN binaries process the whole folder at once and output to stdout/stderr
+    # We'll monitor the output folder to track progress
+    
+    kwargs = {
+        'stdout': subprocess.PIPE,
+        'stderr': subprocess.STDOUT,
+        'shell': False,
+        'text': True,
+        'encoding': 'utf-8',
+        'errors': 'replace',
+    }
+    if sys.platform == 'win32':
+        kwargs['creationflags'] = subprocess.CREATE_NO_WINDOW
+
+    try:
+        process = subprocess.Popen(cmd, **kwargs)
+        
+        while True:
+            # Check if process is still running
+            retcode = process.poll()
+            
+            # Check progress by counting files in output directory
+            current_done = len(os.listdir(output_frames_dir))
+            p = 5 + (85 * current_done / total)
+            log_progress(current_done, total, f"Upscaling: {current_done}/{total} frames", percentage=p)
+            
+            if retcode is not None:
+                break
+            
+            import time
+            time.sleep(0.5)
+            
+        if process.returncode != 0:
+            stdout, _ = process.communicate()
+            raise Exception(f"Upscaler Error (Code {process.returncode}): {stdout}")
+            
+    except Exception as e:
+        raise Exception(f"Failed to run upscaler: {str(e)}")
 
 def merge_frames(output_frames_dir, input_video, output_path, total_frames):
     # Progress range: 90% to 100%

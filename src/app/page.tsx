@@ -178,8 +178,15 @@ export default function Home() {
                 onChange={(e) => setModel(e.target.value)}
                 disabled={isProcessing}
               >
-                <option value="realesrgan-x4plus">Real-ESRGAN Plus</option>
-                <option value="realesrgan-x4plus-anime">Real-ESRGAN Anime</option>
+                <optgroup label="Real-ESRGAN">
+                  <option value="realesrgan-x4plus">Real-ESRGAN Plus (General)</option>
+                  <option value="realesrgan-x4plus-anime">Real-ESRGAN Anime</option>
+                  <option value="realesr-animevideov3">Real-ESRGAN AnimeVideo V3</option>
+                </optgroup>
+                <optgroup label="Real-CUGAN">
+                  <option value="realcugan-se">Real-CUGAN SE (Fast)</option>
+                  <option value="realcugan-pro">Real-CUGAN Pro (High Quality)</option>
+                </optgroup>
               </select>
             </div>
           </div>

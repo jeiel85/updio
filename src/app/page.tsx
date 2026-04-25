@@ -32,7 +32,15 @@ export default function Home() {
     });
 
     const unlistenError = listen<{ message: string }>("upscale-error", (event) => {
-      setError(event.payload.message);
+      let rawMessage = event.payload.message;
+      try {
+        // Try to parse if it's a JSON string like {"error": "..."}
+        const parsed = JSON.parse(rawMessage);
+        setError(parsed.error || rawMessage);
+      } catch (e) {
+        // Not JSON, use as is
+        setError(rawMessage);
+      }
       setIsProcessing(false);
     });
 

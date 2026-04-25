@@ -4,10 +4,11 @@ import json
 import subprocess
 import argparse
 import shutil
+import platform
 from pathlib import Path
 
 # Vibe Video Upscaler - AI Sidecar Core
-# Fixed: Reverted to high-compatibility mode based on v0.1.0 success
+# Fix: Proper Sidecar resolution for FFmpeg/FFprobe on Windows
 
 # Global paths for FFmpeg/FFprobe
 FFMPEG_EXE = "ffmpeg"
@@ -23,23 +24,26 @@ def log_progress(current, total, message):
 
 def run_command(args):
     """
-    Handles Unicode file paths using list-based arguments.
-    Secure against Windows shell encoding issues.
+    Runs a command as a list of arguments to avoid shell encoding issues.
     """
-    # In bundled app, sidecars are often in the same directory or PATH
-    process = subprocess.Popen(
-        args,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        shell=False,
-        text=True,
-        encoding='utf-8',
-        errors='replace' # Prevent crash on decoding
-    )
-    stdout, stderr = process.communicate()
-    if process.returncode != 0:
-        raise Exception(f"Command failed: {stderr}")
-    return stdout
+    try:
+        process = subprocess.Popen(
+            args,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            shell=False,
+            text=True,
+            encoding='utf-8',
+            errors='replace'
+        )
+        stdout, stderr = process.communicate()
+        if process.returncode != 0:
+            raise Exception(f"Subprocess failed with code {process.returncode}: {stderr}")
+        return stdout
+    except FileNotFoundError:
+        raise Exception(f"Executable not found: {args[0]}. Please ensure FFmpeg is correctly bundled.")
+    except Exception as e:
+        raise Exception(f"Execution error: {str(e)}")
 
 def extract_frames(input_path, temp_dir):
     os.makedirs(temp_dir, exist_ok=True)
@@ -91,7 +95,7 @@ def merge_frames(output_frames_dir, input_video, output_path):
     try:
         fps = run_command(fps_args).strip()
     except:
-        fps = "30" # Default fallback
+        fps = "30"
     
     audio_temp = os.path.join(os.path.dirname(output_path), "temp_audio.m4a")
     has_audio = False
@@ -128,20 +132,25 @@ def main():
     parser.add_argument("--ffprobe", default="ffprobe")
     
     args = parser.parse_args()
-    # Try to find ffmpeg next to the sidecar executable if just name passed
-    executable_dir = os.path.dirname(sys.executable)
     
-    def resolve_exe(exe_name):
-        # 1. Check direct path or same dir
-        target = os.path.join(executable_dir, f"{exe_name}.exe")
-        if os.path.exists(target): return target
-        # 2. Check current working dir
-        if os.path.exists(f"{exe_name}.exe"): return f"{exe_name}.exe"
-        # 3. Use PATH
-        return exe_name
+    # Critical: In Tauri, sidecars are renamed to {name}-{triple}.exe
+    # We must try to find the correct sidecar file in the executable's directory.
+    exe_dir = os.path.dirname(sys.executable)
+    
+    def find_tauri_sidecar(base_name):
+        # List of potential triples
+        triples = ["x86_64-pc-windows-msvc", "aarch64-pc-windows-msvc"]
+        for triple in triples:
+            path = os.path.join(exe_dir, f"{base_name}-{triple}.exe")
+            if os.path.exists(path):
+                return path
+        # Fallback to plain name or path
+        if os.path.exists(os.path.join(exe_dir, f"{base_name}.exe")):
+            return os.path.join(exe_dir, f"{base_name}.exe")
+        return base_name
 
-    FFMPEG_EXE = resolve_exe(args.ffmpeg)
-    FFPROBE_EXE = resolve_exe(args.ffprobe)
+    FFMPEG_EXE = find_tauri_sidecar("ffmpeg")
+    FFPROBE_EXE = find_tauri_sidecar("ffprobe")
     
     temp_dir = os.path.join(os.path.dirname(args.output), "vibe_workspace")
     
@@ -152,7 +161,9 @@ def main():
         merge_frames(output_frames_dir, args.input, args.output)
         log_progress(100, 100, "Done! Video upscaled successfully.")
     except Exception as e:
-        print(json.dumps({"error": str(e)}), file=sys.stderr)
+        # Print error message cleanly without JSON wrapping to avoid double encoding issues in UI
+        # But for Tauri to catch it properly as error, we write to stderr
+        sys.stderr.write(str(e))
         sys.exit(1)
     finally:
         if os.path.exists(temp_dir):

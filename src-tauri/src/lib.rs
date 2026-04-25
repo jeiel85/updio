@@ -24,7 +24,6 @@ async fn start_upscale(
     scale: u32,
     model: String,
 ) -> Result<(), String> {
-    // Revert to 0.1.0-style simple sidecar call
     let sidecar_command = app
         .shell()
         .sidecar("vibe-engine")
@@ -51,6 +50,7 @@ async fn start_upscale(
                 }
                 CommandEvent::Stderr(line) => {
                     let line_str = String::from_utf8_lossy(&line);
+                    // Emit raw stderr for direct display (already contains the error message)
                     let _ = app.emit("upscale-error", ErrorPayload { message: line_str.to_string() });
                 }
                 CommandEvent::Terminated(payload) => {

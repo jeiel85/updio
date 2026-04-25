@@ -7,6 +7,7 @@
   ],
   "permissions": [
     "core:default",
+    "updater:default",
     {
       "identifier": "shell:allow-execute",
       "allow": [
@@ -14,6 +15,16 @@
           "args": true,
           "sidecar": true,
           "name": "binaries/vibe-engine"
+        },
+        {
+          "args": true,
+          "sidecar": true,
+          "name": "binaries/ffmpeg"
+        },
+        {
+          "args": true,
+          "sidecar": true,
+          "name": "binaries/ffprobe"
         }
       ]
     }

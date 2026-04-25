@@ -31,36 +31,20 @@ export default function Home() {
       setProgress(event.payload);
     });
 
-    const unlistenError = listen<{ message: string }>("upscale-error", (event) => {
-      let rawMessage = event.payload.message;
-      try {
-        // Try to parse if it's a JSON string like {"error": "..."}
-        const parsed = JSON.parse(rawMessage);
-        setError(parsed.error || rawMessage);
-      } catch (e) {
-        // Not JSON, use as is
-        setError(rawMessage);
-      }
+    const unlistenFinished = listen<{ code: number | null; error: string | null }>("upscale-finished", (event) => {
       setIsProcessing(false);
-    });
-
-    const unlistenFinished = listen<number | null>("upscale-finished", (event) => {
-      setIsProcessing(false);
-      const exitCode = event.payload;
-      if (exitCode === 0) {
+      const { code, error: errMsg } = event.payload;
+      if (code === 0) {
         setIsFinished(true);
         setProgress({ current: 100, total: 100, percentage: 100, message: t("completed") });
       } else {
-        // If not zero, it's an error. The error message should have been caught by upscale-error
-        // but we'll ensure the UI knows it's not finished successfully.
         setIsFinished(false);
-        if (!error) setError(`Process exited with code ${exitCode}`);
+        setError(errMsg || `Process exited with code ${code}`);
       }
     });
 
     return () => {
       unlistenProgress.then((f) => f());
-      unlistenError.then((f) => f());
       unlistenFinished.then((f) => f());
     };
   }, [t]);
@@ -263,7 +247,7 @@ export default function Home() {
       </div>
 
       <footer className="mt-8 text-slate-500 text-xs flex items-center gap-4">
-        <p>Vibe Video Upscaler v0.2.0</p>
+        <p>Vibe Video Upscaler v0.2.1</p>
         <div className="w-1 h-1 bg-slate-800 rounded-full" />
         <p>Multi-language & FFmpeg Bundled</p>
       </footer>

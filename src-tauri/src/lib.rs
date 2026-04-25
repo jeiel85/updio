@@ -12,8 +12,9 @@ struct ProgressPayload {
 }
 
 #[derive(Serialize, Clone)]
-struct ErrorPayload {
-    message: String,
+struct FinishedPayload {
+    code: Option<i32>,
+    error: Option<String>,
 }
 
 fn find_sidecar_binary(app: &AppHandle, name: &str) -> String {
@@ -33,7 +34,16 @@ fn find_sidecar_binary(app: &AppHandle, name: &str) -> String {
         }
     }
 
-    // Final fallback: hope it's in PATH
+    // Fallback: check next to the app executable (some NSIS layouts)
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(dir) = exe.parent() {
+            let p = dir.join(format!("{}.exe", name));
+            if p.exists() {
+                return p.to_string_lossy().to_string();
+            }
+        }
+    }
+
     name.to_string()
 }
 
@@ -66,6 +76,8 @@ async fn start_upscale(
         .map_err(|e| e.to_string())?;
 
     tauri::async_runtime::spawn(async move {
+        let mut stderr_buf: Vec<String> = Vec::new();
+
         while let Some(event) = rx.recv().await {
             match event {
                 CommandEvent::Stdout(line) => {
@@ -75,11 +87,23 @@ async fn start_upscale(
                     }
                 }
                 CommandEvent::Stderr(line) => {
-                    let line_str = String::from_utf8_lossy(&line);
-                    let _ = app.emit("upscale-error", ErrorPayload { message: line_str.to_string() });
+                    let s = String::from_utf8_lossy(&line).trim().to_string();
+                    if !s.is_empty() {
+                        stderr_buf.push(s);
+                    }
                 }
                 CommandEvent::Terminated(payload) => {
-                    let _ = app.emit("upscale-finished", payload.code);
+                    let code = payload.code;
+                    let error = if code != Some(0) {
+                        if !stderr_buf.is_empty() {
+                            Some(stderr_buf.join("\n"))
+                        } else {
+                            Some(format!("Process exited with code {:?}", code))
+                        }
+                    } else {
+                        None
+                    };
+                    let _ = app.emit("upscale-finished", FinishedPayload { code, error });
                 }
                 _ => {}
             }

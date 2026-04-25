@@ -23,16 +23,19 @@ def log_progress(current, total, message):
     }), flush=True)
 
 def run_command(args):
+    kwargs = {
+        'stdout': subprocess.PIPE,
+        'stderr': subprocess.PIPE,
+        'shell': False,
+        'text': True,
+        'encoding': 'utf-8',
+        'errors': 'replace',
+    }
+    if sys.platform == 'win32':
+        kwargs['creationflags'] = subprocess.CREATE_NO_WINDOW
+
     try:
-        process = subprocess.Popen(
-            args,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            shell=False,
-            text=True,
-            encoding='utf-8',
-            errors='replace'
-        )
+        process = subprocess.Popen(args, **kwargs)
         stdout, stderr = process.communicate()
         if process.returncode != 0:
             raise Exception(f"FFmpeg Error: {stderr.strip()}")

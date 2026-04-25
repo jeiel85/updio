@@ -53,7 +53,6 @@ jobs:
           Expand-Archive ffmpeg.zip -DestinationPath ffmpeg_temp
           $bin_dir = "src-tauri/binaries"
           if (!(Test-Path $bin_dir)) { New-Item -ItemType Directory -Path $bin_dir }
-          # Move files to binaries folder with proper triple names
           Get-ChildItem -Path "ffmpeg_temp" -Filter "ffmpeg.exe" -Recurse | Copy-Item -Destination "$bin_dir/ffmpeg-x86_64-pc-windows-msvc.exe"
           Get-ChildItem -Path "ffmpeg_temp" -Filter "ffprobe.exe" -Recurse | Copy-Item -Destination "$bin_dir/ffprobe-x86_64-pc-windows-msvc.exe"
 
@@ -64,6 +63,37 @@ jobs:
         with:
           tagName: v__VERSION__
           releaseName: "Vibe Video Upscaler v__VERSION__"
-          releaseBody: "Automated release from GitHub Actions. Includes both installer (.msi) and standalone (.exe) versions."
+          releaseBody: "Automated release from GitHub Actions. Assets include:\n- **Installer (.msi, .exe)**: For full installation.\n- **Portable (.zip)**: For standalone use without installation."
           releaseDraft: false
           prerelease: false
+
+      # Custom step to provide a truly portable ZIP version (including sidecars)
+      - name: create portable bundle
+        shell: pwsh
+        run: |
+          $version = (Get-Content package.json | ConvertFrom-Json).version
+          $release_dir = "src-tauri/target/release"
+          $portable_dir = "vibe-upscaler-portable-v$version"
+          New-Item -ItemType Directory -Path $portable_dir
+          
+          # Copy main executable
+          Copy-Item "$release_dir/updio.exe" -Destination "$portable_dir/"
+          
+          # Copy sidecars (Tauri v2 puts them in the same dir or 'bin' during runtime, 
+          # but for manual zip we need them next to the exe)
+          # Note: In production build, sidecars are renamed by Tauri.
+          # We'll grab them from our binaries folder as they will be bundled inside anyway,
+          # but for portable zip, having them accessible helps.
+          New-Item -ItemType Directory -Path "$portable_dir/binaries"
+          Copy-Item "src-tauri/binaries/*" -Destination "$portable_dir/binaries/"
+          
+          # Zip it
+          Compress-Archive -Path "$portable_dir/*" -DestinationPath "updio_v$version`_portable_x64.zip"
+
+      - name: upload portable zip to release
+        shell: pwsh
+        run: |
+          $version = (Get-Content package.json | ConvertFrom-Json).version
+          gh release upload "v$version" "updio_v$version`_portable_x64.zip" --clobber
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -66,3 +66,23 @@ jobs:
           releaseBody: "Automated release from GitHub Actions. Stable recovery version."
           releaseDraft: false
           prerelease: false
+
+      - name: create portable zip
+        shell: pwsh
+        run: |
+          $version = (Get-Content src-tauri/tauri.conf.json | ConvertFrom-Json).version
+          $portable_dir = "portable"
+          New-Item -ItemType Directory -Path $portable_dir
+          Copy-Item "src-tauri/target/release/updio.exe" "$portable_dir/"
+          Copy-Item "src-tauri/binaries/vibe-engine-x86_64-pc-windows-msvc.exe" "$portable_dir/vibe-engine.exe"
+          Copy-Item "src-tauri/binaries/ffmpeg-x86_64-pc-windows-msvc.exe" "$portable_dir/ffmpeg.exe"
+          Copy-Item "src-tauri/binaries/ffprobe-x86_64-pc-windows-msvc.exe" "$portable_dir/ffprobe.exe"
+          Compress-Archive -Path "$portable_dir/*" -DestinationPath "updio_${version}_x64_portable.zip"
+
+      - name: upload portable zip to release
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $version = (Get-Content src-tauri/tauri.conf.json | ConvertFrom-Json).version
+          gh release upload "v$version" "updio_${version}_x64_portable.zip" --clobber

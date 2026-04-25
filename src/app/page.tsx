@@ -3,7 +3,10 @@
 import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { Upload, Video, Settings, Play, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
+import { open } from "@tauri-apps/plugin-dialog";
+import { Upload, Video, Settings, Play, CheckCircle, AlertCircle, Loader2, FolderOpen, Languages } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import "../i18n/config"; // Initialize i18n
 
 interface ProgressPayload {
   current: number;
@@ -13,6 +16,7 @@ interface ProgressPayload {
 }
 
 export default function Home() {
+  const { t, i18n } = useTranslation();
   const [inputPath, setInputPath] = useState<string>("");
   const [outputPath, setOutputPath] = useState<string>("");
   const [scale, setScale] = useState<number>(2);
@@ -35,7 +39,7 @@ export default function Home() {
     const unlistenFinished = listen<number | null>("upscale-finished", (event) => {
       setIsProcessing(false);
       setIsFinished(true);
-      setProgress({ current: 100, total: 100, percentage: 100, message: "Completed!" });
+      setProgress({ current: 100, total: 100, percentage: 100, message: t("completed") });
     });
 
     return () => {
@@ -43,7 +47,30 @@ export default function Home() {
       unlistenError.then((f) => f());
       unlistenFinished.then((f) => f());
     };
-  }, []);
+  }, [t]);
+
+  const handleBrowse = async () => {
+    try {
+      const selected = await open({
+        multiple: false,
+        filters: [
+          {
+            name: "Video",
+            extensions: ["mp4", "avi", "mkv", "mov", "webm"],
+          },
+        ],
+      });
+      if (selected && typeof selected === "string") {
+        setInputPath(selected);
+        setOutputPath("");
+        setIsFinished(false);
+        setProgress(null);
+        setError(null);
+      }
+    } catch (e: any) {
+      setError("Failed to open file dialog: " + e.toString());
+    }
+  };
 
   const handleStart = async () => {
     if (!inputPath) {
@@ -51,14 +78,13 @@ export default function Home() {
       return;
     }
 
-    // Simple output path generation if not provided
     const outPath = outputPath || inputPath.replace(/(\.[^.]+)$/, "_upscaled$1");
     setOutputPath(outPath);
 
     setError(null);
     setIsFinished(false);
     setIsProcessing(true);
-    setProgress({ current: 0, total: 100, percentage: 0, message: "Initializing..." });
+    setProgress({ current: 0, total: 100, percentage: 0, message: t("initializing") });
 
     try {
       await invoke("start_upscale", {
@@ -73,31 +99,56 @@ export default function Home() {
     }
   };
 
+  const changeLanguage = (lng: string) => {
+    i18n.changeLanguage(lng);
+  };
+
   return (
     <main className="min-h-screen bg-slate-950 text-slate-50 p-8 flex flex-col items-center justify-center">
+      {/* Language Selector */}
+      <div className="absolute top-6 right-6 flex items-center gap-2 bg-slate-900/80 border border-slate-800 p-1 rounded-full px-3 py-1.5 shadow-lg">
+        <Languages size={14} className="text-slate-400" />
+        <select 
+          className="bg-transparent text-xs font-medium focus:outline-none cursor-pointer text-slate-300"
+          value={i18n.language}
+          onChange={(e) => changeLanguage(e.target.value)}
+        >
+          <option value="ko">한국어</option>
+          <option value="en">English</option>
+          <option value="ja">日本語</option>
+        </select>
+      </div>
+
       <div className="w-full max-w-2xl bg-slate-900/50 border border-slate-800 rounded-2xl p-8 shadow-2xl backdrop-blur-sm">
         <header className="mb-8 text-center">
           <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent">
-            Vibe Video Upscaler
+            {t("title")}
           </h1>
-          <p className="text-slate-400 mt-2">AI-powered high resolution video enhancement</p>
+          <p className="text-slate-400 mt-2">{t("subtitle")}</p>
         </header>
 
         <div className="space-y-6">
           {/* File Input */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-slate-300 flex items-center gap-2">
-              <Video size={16} /> Input Video Path
+              <Video size={16} /> {t("input_label")}
             </label>
             <div className="flex gap-2">
               <input
                 type="text"
-                placeholder="C:\Videos\my_video.mp4"
+                placeholder={t("placeholder")}
                 className="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
                 value={inputPath}
-                onChange={(e) => setInputPath(e.target.value)}
-                disabled={isProcessing}
+                readOnly
               />
+              <button
+                onClick={handleBrowse}
+                disabled={isProcessing}
+                className="bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2 rounded-lg flex items-center gap-2 transition-colors border border-slate-700 text-sm font-medium"
+              >
+                <FolderOpen size={16} />
+                {t("browse")}
+              </button>
             </div>
           </div>
 
@@ -105,10 +156,10 @@ export default function Home() {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-medium text-slate-300 flex items-center gap-2">
-                <Settings size={16} /> Scale
+                <Settings size={16} /> {t("scale")}
               </label>
               <select
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm appearance-none"
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm appearance-none cursor-pointer"
                 value={scale}
                 onChange={(e) => setScale(Number(e.target.value))}
                 disabled={isProcessing}
@@ -119,10 +170,10 @@ export default function Home() {
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium text-slate-300 flex items-center gap-2">
-                <Settings size={16} /> AI Model
+                <Settings size={16} /> {t("model")}
               </label>
               <select
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm appearance-none"
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm appearance-none cursor-pointer"
                 value={model}
                 onChange={(e) => setModel(e.target.value)}
                 disabled={isProcessing}
@@ -138,10 +189,10 @@ export default function Home() {
             <div className="bg-slate-950/50 border border-slate-800 rounded-xl p-6 space-y-4">
               <div className="flex justify-between items-center text-sm">
                 <span className="text-slate-400">
-                  {error ? "Error occurred" : isFinished ? "Process complete" : progress?.message || "Preparing..."}
+                  {error ? t("error_occurred") : isFinished ? t("completed") : progress?.message || t("preparing")}
                 </span>
                 <span className="font-mono text-indigo-400">
-                  {progress ? `${progress.percentage}%` : "0%"}
+                  {progress ? `${Math.round(progress.percentage)}%` : "0%"}
                 </span>
               </div>
               
@@ -155,16 +206,16 @@ export default function Home() {
               </div>
 
               {error && (
-                <div className="flex items-start gap-2 text-red-400 text-xs mt-2 bg-red-500/10 p-3 rounded-lg border border-red-500/20">
+                <div className="flex items-start gap-2 text-red-400 text-xs mt-2 bg-red-500/10 p-3 rounded-lg border border-red-500/20 max-h-32 overflow-y-auto">
                   <AlertCircle size={14} className="shrink-0 mt-0.5" />
-                  <p>{error}</p>
+                  <p className="whitespace-pre-wrap">{error}</p>
                 </div>
               )}
 
               {isFinished && (
                 <div className="flex items-center gap-2 text-green-400 text-sm bg-green-500/10 p-3 rounded-lg border border-green-500/20">
                   <CheckCircle size={16} />
-                  <span>Success! Upscaled video saved to output path.</span>
+                  <span>{t("success_msg")}</span>
                 </div>
               )}
             </div>
@@ -175,20 +226,20 @@ export default function Home() {
             onClick={handleStart}
             disabled={isProcessing || !inputPath}
             className={`w-full py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 transition-all duration-300 ${
-              isProcessing 
-                ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+              isProcessing || !inputPath
+                ? 'bg-slate-800 text-slate-500 cursor-not-allowed opacity-50'
                 : 'bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white shadow-lg hover:shadow-indigo-500/20 active:scale-[0.98]'
             }`}
           >
             {isProcessing ? (
               <>
                 <Loader2 className="animate-spin" />
-                Processing...
+                {t("processing")}
               </>
             ) : (
               <>
                 <Play size={20} fill="currentColor" />
-                Start Upscaling
+                {t("start")}
               </>
             )}
           </button>
@@ -196,9 +247,9 @@ export default function Home() {
       </div>
 
       <footer className="mt-8 text-slate-500 text-xs flex items-center gap-4">
-        <p>Vibe Video Upscaler v0.1.0</p>
+        <p>Vibe Video Upscaler v0.1.2</p>
         <div className="w-1 h-1 bg-slate-800 rounded-full" />
-        <p>Powered by Real-ESRGAN & Tauri</p>
+        <p>Multi-language & FFmpeg Bundled</p>
       </footer>
     </main>
   );

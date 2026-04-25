@@ -7,7 +7,7 @@ import shutil
 from pathlib import Path
 
 # Vibe Video Upscaler - AI Sidecar Core
-# Logic: FFmpeg (Extract) -> AI Inference (Upscale) -> FFmpeg (Merge)
+# Fixed: Handled Unicode (Korean, Japanese, etc.) file paths correctly on Windows
 
 # Global paths for FFmpeg/FFprobe
 FFMPEG_EXE = "ffmpeg"
@@ -21,14 +21,18 @@ def log_progress(current, total, message):
         "message": message
     }), flush=True)
 
-def run_command(command):
-    # Ensure command uses the specified ffmpeg/ffprobe path
+def run_command(args):
+    """
+    Runs a command as a list of arguments to avoid shell encoding issues.
+    Why: shell=True with string commands often breaks on non-ASCII characters in Windows.
+    """
     process = subprocess.Popen(
-        command,
+        args,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
-        shell=True,
-        text=True
+        shell=False, # Secure and handles Unicode paths directly
+        text=True,
+        encoding='utf-8' # Explicitly use UTF-8
     )
     stdout, stderr = process.communicate()
     if process.returncode != 0:
@@ -42,15 +46,22 @@ def extract_frames(input_path, temp_dir):
     
     log_progress(0, 100, "Extracting frames...")
     
-    # Use the ffprobe path passed or default
-    probe_cmd = f'"{FFPROBE_EXE}" -v error -select_streams v:0 -count_packets -show_entries stream=nb_read_packets -of csv=p=0 "{input_path}"'
+    # Use list for arguments to protect Unicode paths
+    probe_args = [
+        FFPROBE_EXE, "-v", "error", "-select_streams", "v:0", 
+        "-count_packets", "-show_entries", "stream=nb_read_packets", 
+        "-of", "csv=p=0", input_path
+    ]
     try:
-        total_frames = int(run_command(probe_cmd).strip())
+        total_frames = int(run_command(probe_args).strip())
     except:
         total_frames = 100 
     
-    extract_cmd = f'"{FFMPEG_EXE}" -i "{input_path}" -qscale:v 2 "{frames_dir}/%08d.jpg"'
-    run_command(extract_cmd)
+    extract_args = [
+        FFMPEG_EXE, "-i", input_path, "-qscale:v", "2", 
+        os.path.join(frames_dir, "%08d.jpg")
+    ]
+    run_command(extract_args)
     
     return frames_dir, total_frames
 
@@ -64,6 +75,7 @@ def upscale_frames(frames_dir, output_frames_dir, scale, model_type):
     for i, frame_file in enumerate(frame_files):
         src = os.path.join(frames_dir, frame_file)
         dst = os.path.join(output_frames_dir, frame_file)
+        # Internal shutil operations are Unicode-safe in Python 3
         shutil.copy(src, dst)
         if i % 10 == 0 or i == total - 1:
             log_progress(i + 1, total, f"Upscaling: {frame_file}")
@@ -71,22 +83,33 @@ def upscale_frames(frames_dir, output_frames_dir, scale, model_type):
 def merge_frames(output_frames_dir, input_video, output_path):
     log_progress(95, 100, "Merging frames and audio...")
     
-    fps_cmd = f'"{FFPROBE_EXE}" -v error -select_streams v:0 -show_entries stream=r_frame_rate -of default=noprint_wrappers=1:nokey=1 "{input_video}"'
-    fps = run_command(fps_cmd).strip()
+    fps_args = [
+        FFPROBE_EXE, "-v", "error", "-select_streams", "v:0", 
+        "-show_entries", "stream=r_frame_rate", 
+        "-of", "default=noprint_wrappers=1:nokey=1", input_video
+    ]
+    fps = run_command(fps_args).strip()
     
     audio_temp = os.path.join(os.path.dirname(output_path), "temp_audio.m4a")
+    has_audio = False
     try:
-        run_command(f'"{FFMPEG_EXE}" -y -i "{input_video}" -vn -acodec copy "{audio_temp}"')
+        run_command([FFMPEG_EXE, "-y", "-i", input_video, "-vn", "-acodec", "copy", audio_temp])
         has_audio = True
     except:
         has_audio = False
     
     if has_audio:
-        merge_cmd = f'"{FFMPEG_EXE}" -y -r {fps} -i "{output_frames_dir}/%08d.jpg" -i "{audio_temp}" -c:v libx264 -pix_fmt yuv420p -c:a copy "{output_path}"'
+        merge_args = [
+            FFMPEG_EXE, "-y", "-r", fps, "-i", os.path.join(output_frames_dir, "%08d.jpg"),
+            "-i", audio_temp, "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "copy", output_path
+        ]
     else:
-        merge_cmd = f'"{FFMPEG_EXE}" -y -r {fps} -i "{output_frames_dir}/%08d.jpg" -c:v libx264 -pix_fmt yuv420p "{output_path}"'
+        merge_args = [
+            FFMPEG_EXE, "-y", "-r", fps, "-i", os.path.join(output_frames_dir, "%08d.jpg"),
+            "-c:v", "libx264", "-pix_fmt", "yuv420p", output_path
+        ]
     
-    run_command(merge_cmd)
+    run_command(merge_args)
     
     if has_audio and os.path.exists(audio_temp):
         os.remove(audio_temp)
@@ -105,7 +128,7 @@ def main():
     FFMPEG_EXE = args.ffmpeg
     FFPROBE_EXE = args.ffprobe
     
-    temp_dir = os.path.join(os.path.dirname(args.output), "vibe_temp")
+    temp_dir = os.path.join(os.path.dirname(args.output), "vibe_temp_workspace")
     
     try:
         frames_dir, total_frames = extract_frames(args.input, temp_dir)
@@ -114,6 +137,7 @@ def main():
         merge_frames(output_frames_dir, args.input, args.output)
         log_progress(100, 100, "Done! Video upscaled successfully.")
     except Exception as e:
+        # Final safety: Print error as JSON
         print(json.dumps({"error": str(e)}), file=sys.stderr)
         sys.exit(1)
     finally:

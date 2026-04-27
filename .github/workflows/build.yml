@@ -57,7 +57,7 @@ jobs:
           Get-ChildItem -Path "ffmpeg_temp" -Filter "ffprobe.exe" -Recurse | Copy-Item -Destination "$bin_dir/ffprobe-x86_64-pc-windows-msvc.exe"
 
       - name: build tauri app
-        uses: tauri-apps/tauri-action@v0
+        uses: tauri-apps/tauri-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -72,6 +72,7 @@ jobs:
         run: |
           $version = (Get-Content src-tauri/tauri.conf.json | ConvertFrom-Json).version
           $portable_dir = "portable"
+          if (Test-Path $portable_dir) { Remove-Item -Recurse -Force $portable_dir }
           New-Item -ItemType Directory -Path $portable_dir
           Copy-Item "src-tauri/target/release/updio.exe" "$portable_dir/"
           Copy-Item "src-tauri/binaries/vibe-engine-x86_64-pc-windows-msvc.exe" "$portable_dir/vibe-engine.exe"
@@ -85,4 +86,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           $version = (Get-Content src-tauri/tauri.conf.json | ConvertFrom-Json).version
+          # 릴리즈가 생성될 때까지 잠시 대기
+          Start-Sleep -Seconds 5
           gh release upload "v$version" "updio_${version}_x64_portable.zip" --clobber

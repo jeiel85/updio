@@ -99,8 +99,10 @@ jobs:
           if (!(Test-Path $py_bin_dir)) { New-Item -ItemType Directory -Path $py_bin_dir }
           Copy-Item "esrgan_temp/realesrgan-ncnn-vulkan.exe" "$py_bin_dir/"
           Copy-Item "esrgan_temp/models" "$py_bin_dir/" -Recurse
-          Copy-Item "cugan_temp/realcugan-ncnn-vulkan.exe" "$py_bin_dir/realcugan/"
-          Copy-Item "cugan_temp/models-*" "$py_bin_dir/realcugan/" -Recurse
+          Copy-Item "cugan_temp/realcugan-ncnn-vulkan-20220728-windows/realcugan-ncnn-vulkan.exe" "$py_bin_dir/realcugan/"
+          Copy-Item "cugan_temp/realcugan-ncnn-vulkan-20220728-windows/models-nose" "$py_bin_dir/realcugan/"
+          Copy-Item "cugan_temp/realcugan-ncnn-vulkan-20220728-windows/models-pro" "$py_bin_dir/realcugan/"
+          Copy-Item "cugan_temp/realcugan-ncnn-vulkan-20220728-windows/models-se" "$py_bin_dir/realcugan/"
           
           # 5. Collect Licenses
           $lic_base = "third-party-licenses"
@@ -112,7 +114,7 @@ jobs:
           Get-ChildItem -Path "ffmpeg_temp" -Filter "README.txt" -Recurse | Select-Object -First 1 | Copy-Item -Destination "$lic_base/ffmpeg/"
           # Real-ESRGAN/CUGAN usually have the license in the README or a separate file
           if (Test-Path "esrgan_temp/LICENSE") { Copy-Item "esrgan_temp/LICENSE" "$lic_base/realesrgan/" }
-          if (Test-Path "cugan_temp/LICENSE") { Copy-Item "cugan_temp/LICENSE" "$lic_base/realcugan/" }
+          if (Test-Path "cugan_temp/realcugan-ncnn-vulkan-20220728-windows/LICENSE") { Copy-Item "cugan_temp/realcugan-ncnn-vulkan-20220728-windows/LICENSE" "$lic_base/realcugan/" }
 
       - name: build sidecar
         run: npm run build:sidecar

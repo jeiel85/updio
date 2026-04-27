@@ -46,6 +46,14 @@ def build_sidecar():
     # Path separators: ; on Windows, : on Unix
     sep = ";" if sys.platform == "win32" else ":"
     absolute_bin_path = os.path.abspath("src-python/bin")
+    
+    # Ensure src-python/bin exists to prevent PyInstaller error
+    if not os.path.exists(absolute_bin_path):
+        os.makedirs(absolute_bin_path)
+        # Create a placeholder file to ensure the directory is not empty if needed
+        with open(os.path.join(absolute_bin_path, "placeholder.txt"), "w") as f:
+            f.write("Placeholder for PyInstaller")
+
     bin_data = f"{absolute_bin_path}{sep}."
     
     try:

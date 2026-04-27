@@ -99,6 +99,7 @@ jobs:
           if (!(Test-Path $py_bin_dir)) { New-Item -ItemType Directory -Path $py_bin_dir }
           Copy-Item "esrgan_temp/realesrgan-ncnn-vulkan.exe" "$py_bin_dir/"
           Copy-Item "esrgan_temp/models" "$py_bin_dir/" -Recurse
+          if (!(Test-Path "$py_bin_dir/realcugan")) { New-Item -ItemType Directory -Path "$py_bin_dir/realcugan" }
           Copy-Item "cugan_temp/realcugan-ncnn-vulkan-20220728-windows/realcugan-ncnn-vulkan.exe" "$py_bin_dir/realcugan/"
           Copy-Item "cugan_temp/realcugan-ncnn-vulkan-20220728-windows/models-nose" "$py_bin_dir/realcugan/"
           Copy-Item "cugan_temp/realcugan-ncnn-vulkan-20220728-windows/models-pro" "$py_bin_dir/realcugan/"

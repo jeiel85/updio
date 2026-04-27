@@ -123,30 +123,31 @@ def upscale_frames(frames_dir, output_frames_dir, scale, model_type):
     log_progress(0, total, f"Upscaling frames (Scale: {scale}x, Model: {model_type})...", percentage=5)
     
     # Determine which binary to use
+    upscaler_cwd = None
     if "cugan" in model_type:
         upscaler_exe = get_resource_path(os.path.join("realcugan", "realcugan-ncnn-vulkan.exe"))
-        
+        upscaler_cwd = get_resource_path("realcugan")
+
         # Real-CUGAN models are in subfolders like models-se, models-pro, models-nose
         model_name = "models-se" # Default
         if "pro" in model_type:
             model_name = "models-pro"
         elif "nose" in model_type:
             model_name = "models-nose"
-            
-        models_path = get_resource_path(os.path.join("realcugan", model_name))
-        
+
+        # Pass model_name as relative path; cwd is set to realcugan dir so binary resolves it correctly
         cmd = [
             upscaler_exe,
             "-i", frames_dir,
             "-o", output_frames_dir,
             "-s", str(scale),
-            "-m", models_path,
+            "-m", model_name,
             "-f", "jpg"
         ]
     else:
         upscaler_exe = get_resource_path("realesrgan-ncnn-vulkan.exe")
         models_path = get_resource_path("models")
-        
+
         # Real-ESRGAN command: realesrgan-ncnn-vulkan.exe -i input -o output -s scale -n model_name -m models
         cmd = [
             upscaler_exe,
@@ -161,7 +162,7 @@ def upscale_frames(frames_dir, output_frames_dir, scale, model_type):
     # Run the upscaler
     # Note: These NCNN binaries process the whole folder at once and output to stdout/stderr
     # We'll monitor the output folder to track progress
-    
+
     kwargs = {
         'stdout': subprocess.PIPE,
         'stderr': subprocess.STDOUT,
@@ -170,6 +171,8 @@ def upscale_frames(frames_dir, output_frames_dir, scale, model_type):
         'encoding': 'utf-8',
         'errors': 'replace',
     }
+    if upscaler_cwd:
+        kwargs['cwd'] = upscaler_cwd
     if sys.platform == 'win32':
         kwargs['creationflags'] = subprocess.CREATE_NO_WINDOW
 

@@ -1,5 +1,12 @@
 # 📜 Project History: updio
 
+## [v0.3.4] - 2026-04-27 (Real-CUGAN 모델 경로 버그 수정)
+
+### 🐛 버그 수정 (Bug Fix)
+- **Real-CUGAN 업스케일 실패 수정**: `realcugan-ncnn-vulkan.exe`에 `-m` 옵션으로 절대 경로를 넘길 때 경로가 이중으로 붙는 문제 수정.
+  - 원인: 바이너리가 `-m`을 자신의 실행 파일 위치 기준 상대 경로로 처리함에 따라 절대 경로가 실행 디렉터리 뒤에 중복 삽입됨.
+  - 수정: subprocess 실행 시 `cwd`를 realcugan 디렉터리로 지정하고, `-m`에는 모델 폴더명(`models-pro`, `models-se`, `models-nose`)만 전달.
+
 ## [v0.3.3] - 2026-04-27 (CI/CD 안정화 및 보안 강화)
 
 ### 🛡️ 보안 (Security)

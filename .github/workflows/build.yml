@@ -83,8 +83,15 @@ jobs:
           Expand-Archive esrgan.zip -DestinationPath esrgan_temp
           
           # 3. Real-CUGAN
-          $cugan_url = "https://github.com/nihui/realcugan-ncnn-vulkan/releases/download/v0.1.0/realcugan-ncnn-vulkan-20220227-windows.zip"
+          $cugan_url = "https://github.com/nihui/realcugan-ncnn-vulkan/releases/download/20220728/realcugan-ncnn-vulkan-20220728-windows.zip"
+          $cugan_hash = "C6E08D46C11704B1E3A1ADA9DDD591CB5005F52F132136C8633BA25DEF400E01"
           Invoke-WebRequest -Uri $cugan_url -OutFile cugan.zip
+          $actual_cugan_hash = (Get-FileHash cugan.zip -Algorithm SHA256).Hash
+          if ($actual_cugan_hash.ToLower() -ne $cugan_hash.ToLower()) {
+            Write-Host "Expected: $cugan_hash"
+            Write-Host "Actual: $actual_cugan_hash"
+            throw "Real-CUGAN hash mismatch"
+          }
           Expand-Archive cugan.zip -DestinationPath cugan_temp
           
           # 4. Prepare src-python/bin (for PyInstaller sidecar build)

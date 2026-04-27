@@ -26,8 +26,7 @@ def build_sidecar():
     
     triple = get_target_triple()
     app_name = "vibe-engine"
-    # Note: WiX MSI requires Component/@Id without dots, so use simple name without target triple
-    sidecar_name = f"{app_name}"
+    sidecar_name = f"{app_name}-{triple}"
     
     script_path = os.path.abspath("src-python/main.py")
     output_dir = os.path.abspath("src-tauri/binaries")

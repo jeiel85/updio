@@ -4,8 +4,9 @@ import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
-import { Upload, Video, Settings, Play, CheckCircle, AlertCircle, Loader2, FolderOpen, Languages } from "lucide-react";
+import { Video, Settings, Play, CheckCircle, AlertCircle, Loader2, FolderOpen, Languages } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import packageJson from "../../package.json";
 import "../i18n/config"; // Initialize i18n
 
 interface ProgressPayload {
@@ -13,6 +14,10 @@ interface ProgressPayload {
   total: number;
   percentage: number;
   message: string;
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 export default function Home() {
@@ -67,8 +72,8 @@ export default function Home() {
         setProgress(null);
         setError(null);
       }
-    } catch (e: any) {
-      setError("Failed to open file dialog: " + e.toString());
+    } catch (e: unknown) {
+      setError("Failed to open file dialog: " + getErrorMessage(e));
     }
   };
 
@@ -93,8 +98,8 @@ export default function Home() {
         scale,
         model,
       });
-    } catch (e: any) {
-      setError(e.toString());
+    } catch (e: unknown) {
+      setError(getErrorMessage(e));
       setIsProcessing(false);
     }
   };
@@ -254,7 +259,7 @@ export default function Home() {
       </div>
 
       <footer className="mt-8 text-slate-500 text-xs flex items-center gap-4">
-        <p>Vibe Video Upscaler v0.2.1</p>
+        <p>Vibe Video Upscaler v{packageJson.version}</p>
         <div className="w-1 h-1 bg-slate-800 rounded-full" />
         <p>Multi-language & FFmpeg Bundled</p>
       </footer>

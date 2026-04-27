@@ -11,7 +11,7 @@ def setup_dev_env():
     os.makedirs(bin_dir, exist_ok=True)
     
     ffmpeg_zip = "ffmpeg.zip"
-    ffmpeg_url = "https://github.com/GyanD/codexffmpeg/releases/download/7.1/ffmpeg-7.1-full_build.zip"
+    ffmpeg_url = "https://github.com/GyanD/codexffmpeg/releases/download/7.1/ffmpeg-7.1-essentials_build.zip"
     
     if not os.path.exists(ffmpeg_zip):
         print(f"📥 Downloading FFmpeg from {ffmpeg_url}...")

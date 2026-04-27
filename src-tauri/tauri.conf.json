@@ -20,12 +20,21 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; img-src 'self' asset: https://asset.localhost; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' ipc: http://localhost:* http://127.0.0.1:*;"
     }
   },
   "bundle": {
     "active": true,
     "targets": ["nsis", "msi"],
+    "publisher": "jeiel85",
+    "copyright": "Copyright (c) 2026 jeiel85",
+    "license": "MIT",
+    "licenseFile": "../LICENSE",
+    "resources": {
+      "../LICENSE": "LICENSE",
+      "../THIRD_PARTY_NOTICES.md": "THIRD_PARTY_NOTICES.md",
+      "../third-party-licenses/**/*": "third-party-licenses/"
+    },
     "externalBin": [
       "binaries/vibe-engine",
       "binaries/ffmpeg",

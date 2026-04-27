@@ -55,6 +55,17 @@ async fn start_upscale(
     scale: u32,
     model: String,
 ) -> Result<(), String> {
+    // Security check: prevents argument injection and ensures paths are valid
+    if input.is_empty() || output.is_empty() {
+        return Err("Input and output paths cannot be empty".into());
+    }
+    if input.starts_with('-') || output.starts_with('-') {
+        return Err("Invalid path: paths cannot start with '-' to prevent argument injection".into());
+    }
+    if !std::path::Path::new(&input).exists() {
+        return Err(format!("Input file does not exist: {}", input));
+    }
+
     let ffmpeg_path = find_sidecar_binary(&app, "ffmpeg");
     let ffprobe_path = find_sidecar_binary(&app, "ffprobe");
 

@@ -88,6 +88,10 @@
 - **[Real-ESRGAN](https://github.com/xinntao/Real-ESRGAN):** 핵심 AI 업스케일 엔진.
 - **[Tauri Framework](https://tauri.app/):** 데스크탑 앱 프레임워크.
 
+## 라이선스
+
+updio 자체 코드는 MIT License로 배포됩니다. 릴리즈 패키지에는 FFmpeg, Real-ESRGAN, Real-CUGAN 계열 실행 파일/모델 등 별도 라이선스를 가진 구성요소가 포함될 수 있습니다. 자세한 내용은 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)를 확인하세요.
+
 ---
 
 <p align="center">

@@ -53,16 +53,52 @@ jobs:
       - name: build sidecar
         run: npm run build:sidecar
 
-      - name: download ffmpeg sidecar
+      - name: setup sidecar binaries and licenses
         shell: pwsh
         run: |
-          $ffmpeg_url = "https://github.com/GyanD/codexffmpeg/releases/download/7.1/ffmpeg-7.1-full_build.zip"
-          Invoke-WebRequest -Uri $ffmpeg_url -OutFile ffmpeg.zip
-          Expand-Archive ffmpeg.zip -DestinationPath ffmpeg_temp
           $bin_dir = "src-tauri/binaries"
           if (!(Test-Path $bin_dir)) { New-Item -ItemType Directory -Path $bin_dir }
+          
+          # 1. FFmpeg
+          $ffmpeg_url = "https://github.com/GyanD/codexffmpeg/releases/download/7.1/ffmpeg-7.1-essentials_build.zip"
+          $ffmpeg_hash = "8748283d821613d930b0e7be685aaa9df4ca6f0ad4d0c42fd02622b3623463c6"
+          Invoke-WebRequest -Uri $ffmpeg_url -OutFile ffmpeg.zip
+          if ((Get-FileHash ffmpeg.zip -Algorithm SHA256).Hash -ne $ffmpeg_hash) { throw "FFmpeg hash mismatch" }
+          Expand-Archive ffmpeg.zip -DestinationPath ffmpeg_temp
           Get-ChildItem -Path "ffmpeg_temp" -Filter "ffmpeg.exe" -Recurse | Copy-Item -Destination "$bin_dir/ffmpeg-x86_64-pc-windows-msvc.exe"
           Get-ChildItem -Path "ffmpeg_temp" -Filter "ffprobe.exe" -Recurse | Copy-Item -Destination "$bin_dir/ffprobe-x86_64-pc-windows-msvc.exe"
+          
+          # 2. Real-ESRGAN
+          $esrgan_url = "https://github.com/nihui/realesrgan-ncnn-vulkan/releases/download/v0.2.0/realesrgan-ncnn-vulkan-20220424-windows.zip"
+          $esrgan_hash = "6ce2ddf1ba6daf0ccef9bb97512f33ecd058de462d90cde88ce2621d1421bfb8"
+          Invoke-WebRequest -Uri $esrgan_url -OutFile esrgan.zip
+          if ((Get-FileHash esrgan.zip -Algorithm SHA256).Hash -ne $esrgan_hash) { throw "Real-ESRGAN hash mismatch" }
+          Expand-Archive esrgan.zip -DestinationPath esrgan_temp
+          
+          # 3. Real-CUGAN
+          $cugan_url = "https://github.com/nihui/realcugan-ncnn-vulkan/releases/download/v0.1.0/realcugan-ncnn-vulkan-20220227-windows.zip"
+          Invoke-WebRequest -Uri $cugan_url -OutFile cugan.zip
+          Expand-Archive cugan.zip -DestinationPath cugan_temp
+          
+          # 4. Prepare src-python/bin (for PyInstaller sidecar build)
+          $py_bin_dir = "src-python/bin"
+          if (!(Test-Path $py_bin_dir)) { New-Item -ItemType Directory -Path $py_bin_dir }
+          Copy-Item "esrgan_temp/realesrgan-ncnn-vulkan.exe" "$py_bin_dir/"
+          Copy-Item "esrgan_temp/models" "$py_bin_dir/" -Recurse
+          Copy-Item "cugan_temp/realcugan-ncnn-vulkan.exe" "$py_bin_dir/realcugan/"
+          Copy-Item "cugan_temp/models-*" "$py_bin_dir/realcugan/" -Recurse
+          
+          # 5. Collect Licenses
+          $lic_base = "third-party-licenses"
+          New-Item -ItemType Directory -Path "$lic_base/ffmpeg" -Force
+          New-Item -ItemType Directory -Path "$lic_base/realesrgan" -Force
+          New-Item -ItemType Directory -Path "$lic_base/realcugan" -Force
+          
+          Get-ChildItem -Path "ffmpeg_temp" -Filter "LICENSE" -Recurse | Select-Object -First 1 | Copy-Item -Destination "$lic_base/ffmpeg/"
+          Get-ChildItem -Path "ffmpeg_temp" -Filter "README.txt" -Recurse | Select-Object -First 1 | Copy-Item -Destination "$lic_base/ffmpeg/"
+          # Real-ESRGAN/CUGAN usually have the license in the README or a separate file
+          if (Test-Path "esrgan_temp/LICENSE") { Copy-Item "esrgan_temp/LICENSE" "$lic_base/realesrgan/" }
+          if (Test-Path "cugan_temp/LICENSE") { Copy-Item "cugan_temp/LICENSE" "$lic_base/realcugan/" }
 
       - name: prepare release metadata
         id: release_meta
@@ -117,6 +153,9 @@ jobs:
           Copy-Item "src-tauri/binaries/vibe-engine-x86_64-pc-windows-msvc.exe" "$portable_dir/vibe-engine.exe"
           Copy-Item "src-tauri/binaries/ffmpeg-x86_64-pc-windows-msvc.exe" "$portable_dir/ffmpeg.exe"
           Copy-Item "src-tauri/binaries/ffprobe-x86_64-pc-windows-msvc.exe" "$portable_dir/ffprobe.exe"
+          Copy-Item "LICENSE" "$portable_dir/LICENSE"
+          Copy-Item "THIRD_PARTY_NOTICES.md" "$portable_dir/THIRD_PARTY_NOTICES.md"
+          Copy-Item "third-party-licenses" "$portable_dir/third-party-licenses" -Recurse
           
           Compress-Archive -Path "$portable_dir/*" -DestinationPath "updio_${version}_x64_portable.zip"
 

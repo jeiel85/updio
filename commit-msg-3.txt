@@ -1,5 +1,0 @@
-feat: GitHub IO 랜딩 페이지 구축 및 문서화 완료
-
-- docs/ 폴더에 현대적인 디자인의 랜딩 페이지(index.html) 추가
-- Glassmorphism 효과 및 브랜드 아이덴티티 적용
-- HISTORY.md 업데이트 및 최종 정리

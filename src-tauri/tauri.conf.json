@@ -25,7 +25,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["nsis", "msi"],
+    "targets": ["nsis"],
     "publisher": "jeiel85",
     "copyright": "Copyright (c) 2026 jeiel85",
     "license": "MIT",
@@ -36,9 +36,9 @@
       "../third-party-licenses/**/*": "third-party-licenses/"
     },
     "externalBin": [
-      "binaries/vibe-engine.exe",
-      "binaries/ffmpeg.exe",
-      "binaries/ffprobe.exe"
+      "binaries/vibe-engine",
+      "binaries/ffmpeg",
+      "binaries/ffprobe"
     ],
     "icon": [
       "icons/32x32.png",

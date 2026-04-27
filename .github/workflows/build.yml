@@ -74,10 +74,21 @@ jobs:
           $portable_dir = "portable"
           if (Test-Path $portable_dir) { Remove-Item -Recurse -Force $portable_dir }
           New-Item -ItemType Directory -Path $portable_dir
-          Copy-Item "src-tauri/target/release/updio.exe" "$portable_dir/"
+          
+          # 빌드된 메인 실행 파일 찾기 (여러 경로 후보 검색)
+          $exe_src = Get-ChildItem -Path "src-tauri/target/release" -Filter "updio.exe" -Recurse | Select-Object -First 1
+          if ($exe_src) {
+              Copy-Item $exe_src.FullName "$portable_dir/updio.exe"
+          } else {
+              Write-Error "Could not find updio.exe in target directory"
+              exit 1
+          }
+          
+          # 사이드카 및 바이너리 복사
           Copy-Item "src-tauri/binaries/vibe-engine-x86_64-pc-windows-msvc.exe" "$portable_dir/vibe-engine.exe"
           Copy-Item "src-tauri/binaries/ffmpeg-x86_64-pc-windows-msvc.exe" "$portable_dir/ffmpeg.exe"
           Copy-Item "src-tauri/binaries/ffprobe-x86_64-pc-windows-msvc.exe" "$portable_dir/ffprobe.exe"
+          
           Compress-Archive -Path "$portable_dir/*" -DestinationPath "updio_${version}_x64_portable.zip"
 
       - name: upload portable zip to release

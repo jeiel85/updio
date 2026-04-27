@@ -25,3 +25,10 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 4. **포터블 버전 무결성**
    - 포터블 ZIP 내부에 `updio.exe`, `vibe-engine.exe`, `ffmpeg.exe` 등 필수 바이너리가 모두 포함되어 있는지 경로 로직을 상시 점검한다.
+
+## 릴리즈 제목 작성 규칙
+
+- GitHub Release 제목은 `v버전 - 설명` 형식을 사용한다. 예: `v0.3.2 - 포터블 릴리즈 패키징 수정`
+- `Vibe Video Upscaler Stable`처럼 모든 릴리즈에 반복되는 고정 홍보 문구를 제목 설명으로 사용하지 않는다.
+- `workflow_dispatch`로 수동 릴리즈를 실행할 때는 `release_description` 입력값에 이번 릴리즈의 핵심 변경 사항을 짧게 적는다.
+- 자동 릴리즈에서는 최신 커밋 제목이 설명으로 들어가므로, 릴리즈 커밋 메시지는 사용자가 이해할 수 있는 변경 요약으로 작성한다.

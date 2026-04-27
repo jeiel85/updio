@@ -6,6 +6,15 @@ on:
   pull_request:
     branches: [ main ]
   workflow_dispatch:
+    inputs:
+      release_description:
+        description: 'Release title description after "v__VERSION__ -"'
+        required: false
+        default: ''
+      release_body:
+        description: 'Release notes body'
+        required: false
+        default: ''
 
 jobs:
   build:
@@ -56,14 +65,32 @@ jobs:
           Get-ChildItem -Path "ffmpeg_temp" -Filter "ffmpeg.exe" -Recurse | Copy-Item -Destination "$bin_dir/ffmpeg-x86_64-pc-windows-msvc.exe"
           Get-ChildItem -Path "ffmpeg_temp" -Filter "ffprobe.exe" -Recurse | Copy-Item -Destination "$bin_dir/ffprobe-x86_64-pc-windows-msvc.exe"
 
+      - name: prepare release metadata
+        id: release_meta
+        shell: pwsh
+        run: |
+          $description = "${{ github.event.inputs.release_description }}"
+          if ([string]::IsNullOrWhiteSpace($description)) {
+            $description = git log -1 --pretty=%s
+          }
+          $description = $description.Trim()
+          "description=$description" >> $env:GITHUB_OUTPUT
+
+          $body = "${{ github.event.inputs.release_body }}"
+          if ([string]::IsNullOrWhiteSpace($body)) {
+            $body = "Automated release from GitHub Actions.`n`nCommit: $description"
+          }
+          $body = $body.Replace("`r`n", "%0A").Replace("`n", "%0A").Replace("`r", "%0A")
+          "body=$body" >> $env:GITHUB_OUTPUT
+
       - name: build tauri app
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: v__VERSION__
-          releaseName: "v__VERSION__ - Vibe Video Upscaler Stable"
-          releaseBody: "Automated release from GitHub Actions. AI-powered video upscaling."
+          releaseName: "v__VERSION__ - ${{ steps.release_meta.outputs.description }}"
+          releaseBody: "${{ steps.release_meta.outputs.body }}"
           releaseDraft: false
           prerelease: false
 

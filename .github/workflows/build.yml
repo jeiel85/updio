@@ -72,7 +72,7 @@ jobs:
           
           # 2. Real-ESRGAN
           $esrgan_url = "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesrgan-ncnn-vulkan-20220424-windows.zip"
-          $esrgan_hash = "6ce2ddf1ba6daf0ccef9bb97512f33ecd058de462d90cde88ce2621d1421bfb8"
+          $esrgan_hash = "ABC02804E17982A3BE33675E4D471E91EA374E65B70167ABC09E31ACB412802D"
           Invoke-WebRequest -Uri $esrgan_url -OutFile esrgan.zip
           $actual_esrgan_hash = (Get-FileHash esrgan.zip -Algorithm SHA256).Hash
           if ($actual_esrgan_hash.ToLower() -ne $esrgan_hash.ToLower()) {

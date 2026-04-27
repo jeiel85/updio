@@ -81,8 +81,8 @@ jobs:
             throw "FFmpeg hash mismatch"
           }
           Expand-Archive ffmpeg.zip -DestinationPath ffmpeg_temp
-          Get-ChildItem -Path "ffmpeg_temp" -Filter "ffmpeg.exe" -Recurse | Copy-Item -Destination "$bin_dir/ffmpeg-x86_64-pc-windows-msvc.exe"
-          Get-ChildItem -Path "ffmpeg_temp" -Filter "ffprobe.exe" -Recurse | Copy-Item -Destination "$bin_dir/ffprobe-x86_64-pc-windows-msvc.exe"
+          Get-ChildItem -Path "ffmpeg_temp" -Filter "ffmpeg.exe" -Recurse | Copy-Item -Destination "$bin_dir/ffmpeg.exe"
+          Get-ChildItem -Path "ffmpeg_temp" -Filter "ffprobe.exe" -Recurse | Copy-Item -Destination "$bin_dir/ffprobe.exe"
           
           # 2. Real-ESRGAN
           $esrgan_url = "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesrgan-ncnn-vulkan-20220424-windows.zip"
@@ -184,9 +184,9 @@ jobs:
           }
           
           # 사이드카 및 바이너리 복사
-          Copy-Item "src-tauri/binaries/vibe-engine-x86_64-pc-windows-msvc.exe" "$portable_dir/vibe-engine.exe"
-          Copy-Item "src-tauri/binaries/ffmpeg-x86_64-pc-windows-msvc.exe" "$portable_dir/ffmpeg.exe"
-          Copy-Item "src-tauri/binaries/ffprobe-x86_64-pc-windows-msvc.exe" "$portable_dir/ffprobe.exe"
+          Copy-Item "src-tauri/binaries/vibe-engine.exe" "$portable_dir/vibe-engine.exe"
+          Copy-Item "src-tauri/binaries/ffmpeg.exe" "$portable_dir/ffmpeg.exe"
+          Copy-Item "src-tauri/binaries/ffprobe.exe" "$portable_dir/ffprobe.exe"
           Copy-Item "LICENSE" "$portable_dir/LICENSE"
           Copy-Item "THIRD_PARTY_NOTICES.md" "$portable_dir/THIRD_PARTY_NOTICES.md"
           Copy-Item "third-party-licenses" "$portable_dir/third-party-licenses" -Recurse

@@ -25,7 +25,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["nsis"],
+    "targets": ["nsis", "msi"],
     "publisher": "jeiel85",
     "copyright": "Copyright (c) 2026 jeiel85",
     "license": "MIT",

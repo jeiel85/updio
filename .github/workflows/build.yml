@@ -100,3 +100,13 @@ jobs:
           # 릴리즈가 생성될 때까지 잠시 대기
           Start-Sleep -Seconds 5
           gh release upload "v$version" "updio_${version}_x64_portable.zip" --clobber
+          
+          # 불필요한 사이드카 바이너리 삭제 (사용자 혼란 방지)
+          Write-Host "Cleaning up internal binaries from release assets..."
+          $assets = gh release view "v$version" --json assets --jq '.assets[].name'
+          foreach ($asset in $assets) {
+              if ($asset -like "vibe-engine*") {
+                  Write-Host "Deleting internal asset: $asset"
+                  gh release delete-asset "v$version" "$asset" -y
+              }
+          }

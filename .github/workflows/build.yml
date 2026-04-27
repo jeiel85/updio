@@ -63,7 +63,12 @@ jobs:
           $ffmpeg_url = "https://github.com/GyanD/codexffmpeg/releases/download/7.1/ffmpeg-7.1-essentials_build.zip"
           $ffmpeg_hash = "8748283d821613d930b0e7be685aaa9df4ca6f0ad4d0c42fd02622b3623463c6"
           Invoke-WebRequest -Uri $ffmpeg_url -OutFile ffmpeg.zip
-          if ((Get-FileHash ffmpeg.zip -Algorithm SHA256).Hash -ne $ffmpeg_hash) { throw "FFmpeg hash mismatch" }
+          $actual_ffmpeg_hash = (Get-FileHash ffmpeg.zip -Algorithm SHA256).Hash
+          if ($actual_ffmpeg_hash.ToLower() -ne $ffmpeg_hash.ToLower()) {
+            Write-Host "Expected: $ffmpeg_hash"
+            Write-Host "Actual: $actual_ffmpeg_hash"
+            throw "FFmpeg hash mismatch"
+          }
           Expand-Archive ffmpeg.zip -DestinationPath ffmpeg_temp
           Get-ChildItem -Path "ffmpeg_temp" -Filter "ffmpeg.exe" -Recurse | Copy-Item -Destination "$bin_dir/ffmpeg-x86_64-pc-windows-msvc.exe"
           Get-ChildItem -Path "ffmpeg_temp" -Filter "ffprobe.exe" -Recurse | Copy-Item -Destination "$bin_dir/ffprobe-x86_64-pc-windows-msvc.exe"

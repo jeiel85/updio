@@ -75,12 +75,15 @@ jobs:
           if (Test-Path $portable_dir) { Remove-Item -Recurse -Force $portable_dir }
           New-Item -ItemType Directory -Path $portable_dir
           
-          # 빌드된 메인 실행 파일 찾기 (여러 경로 후보 검색)
-          $exe_src = Get-ChildItem -Path "src-tauri/target/release" -Filter "updio.exe" -Recurse | Select-Object -First 1
+          # 빌드된 메인 실행 파일 찾기. Cargo package name과 Tauri productName이 다를 수 있다.
+          $exe_src = Get-ChildItem -Path "src-tauri/target/release" -Filter "*.exe" -File |
+            Where-Object { $_.Name -notin @("vibe-engine.exe", "ffmpeg.exe", "ffprobe.exe") } |
+            Select-Object -First 1
           if ($exe_src) {
               Copy-Item $exe_src.FullName "$portable_dir/updio.exe"
           } else {
-              Write-Error "Could not find updio.exe in target directory"
+              Write-Error "Could not find the built Tauri executable in src-tauri/target/release"
+              Get-ChildItem -Path "src-tauri/target/release" -Recurse -Filter "*.exe" | Select-Object FullName
               exit 1
           }
           

@@ -158,8 +158,13 @@ jobs:
           New-Item -ItemType Directory -Path $portable_dir
           
           # 빌드된 메인 실행 파일 찾기. Cargo package name과 Tauri productName이 다를 수 있다.
+          $sidecar_names = @(
+            "vibe-engine-x86_64-pc-windows-msvc.exe",
+            "ffmpeg-x86_64-pc-windows-msvc.exe",
+            "ffprobe-x86_64-pc-windows-msvc.exe"
+          )
           $exe_src = Get-ChildItem -Path "src-tauri/target/release" -Filter "*.exe" -File |
-            Where-Object { $_.Name -notin @("vibe-engine.exe", "ffmpeg.exe", "ffprobe.exe") } |
+            Where-Object { $_.Name -notin $sidecar_names } |
             Select-Object -First 1
           if ($exe_src) {
               Copy-Item $exe_src.FullName "$portable_dir/updio.exe"
@@ -168,11 +173,11 @@ jobs:
               Get-ChildItem -Path "src-tauri/target/release" -Recurse -Filter "*.exe" | Select-Object FullName
               exit 1
           }
-          
-          # 사이드카 및 바이너리 복사
-          Copy-Item "src-tauri/binaries/vibe-engine.exe" "$portable_dir/vibe-engine.exe"
-          Copy-Item "src-tauri/binaries/ffmpeg.exe" "$portable_dir/ffmpeg.exe"
-          Copy-Item "src-tauri/binaries/ffprobe.exe" "$portable_dir/ffprobe.exe"
+
+          # 사이드카 및 바이너리 복사 (Tauri externalBin convention: name-triple.exe)
+          Copy-Item "src-tauri/binaries/vibe-engine-x86_64-pc-windows-msvc.exe" "$portable_dir/vibe-engine.exe"
+          Copy-Item "src-tauri/binaries/ffmpeg-x86_64-pc-windows-msvc.exe" "$portable_dir/ffmpeg.exe"
+          Copy-Item "src-tauri/binaries/ffprobe-x86_64-pc-windows-msvc.exe" "$portable_dir/ffprobe.exe"
           Copy-Item "LICENSE" "$portable_dir/LICENSE"
           Copy-Item "THIRD_PARTY_NOTICES.md" "$portable_dir/THIRD_PARTY_NOTICES.md"
           Copy-Item "third-party-licenses" "$portable_dir/third-party-licenses" -Recurse

@@ -50,9 +50,6 @@ jobs:
       - name: install node dependencies
         run: npm install
 
-      - name: build sidecar
-        run: npm run build:sidecar
-
       - name: setup sidecar binaries and licenses
         shell: pwsh
         run: |
@@ -61,7 +58,7 @@ jobs:
           
           # 1. FFmpeg
           $ffmpeg_url = "https://github.com/GyanD/codexffmpeg/releases/download/7.1/ffmpeg-7.1-essentials_build.zip"
-          $ffmpeg_hash = "8748283d821613d930b0e7be685aaa9df4ca6f0ad4d0c42fd02622b3623463c6"
+          $ffmpeg_hash = "FA7D4D7E795DB0E2503F49F105F46ED5852386F0CFDD819899BE3B65EBDE24FC"
           Invoke-WebRequest -Uri $ffmpeg_url -OutFile ffmpeg.zip
           $actual_ffmpeg_hash = (Get-FileHash ffmpeg.zip -Algorithm SHA256).Hash
           if ($actual_ffmpeg_hash.ToLower() -ne $ffmpeg_hash.ToLower()) {
@@ -77,7 +74,12 @@ jobs:
           $esrgan_url = "https://github.com/nihui/realesrgan-ncnn-vulkan/releases/download/v0.2.0/realesrgan-ncnn-vulkan-20220424-windows.zip"
           $esrgan_hash = "6ce2ddf1ba6daf0ccef9bb97512f33ecd058de462d90cde88ce2621d1421bfb8"
           Invoke-WebRequest -Uri $esrgan_url -OutFile esrgan.zip
-          if ((Get-FileHash esrgan.zip -Algorithm SHA256).Hash -ne $esrgan_hash) { throw "Real-ESRGAN hash mismatch" }
+          $actual_esrgan_hash = (Get-FileHash esrgan.zip -Algorithm SHA256).Hash
+          if ($actual_esrgan_hash.ToLower() -ne $esrgan_hash.ToLower()) {
+            Write-Host "Expected: $esrgan_hash"
+            Write-Host "Actual: $actual_esrgan_hash"
+            throw "Real-ESRGAN hash mismatch"
+          }
           Expand-Archive esrgan.zip -DestinationPath esrgan_temp
           
           # 3. Real-CUGAN
@@ -104,6 +106,9 @@ jobs:
           # Real-ESRGAN/CUGAN usually have the license in the README or a separate file
           if (Test-Path "esrgan_temp/LICENSE") { Copy-Item "esrgan_temp/LICENSE" "$lic_base/realesrgan/" }
           if (Test-Path "cugan_temp/LICENSE") { Copy-Item "cugan_temp/LICENSE" "$lic_base/realcugan/" }
+
+      - name: build sidecar
+        run: npm run build:sidecar
 
       - name: prepare release metadata
         id: release_meta

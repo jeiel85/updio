@@ -1,5 +1,19 @@
 # 📜 Project History: updio
 
+## [v0.3.3] - 2026-04-27 (보안 감사 및 라이선스 준수 강화)
+
+### 🛡️ 보안 (Security)
+- **엄격한 CSP(Content Security Policy) 적용**: XSS 공격 방어 및 시스템 권한 탈취 원천 차단.
+- **인자 주입(Argument Injection) 보호**: Rust 사이드카 호출 시 경로 검증 로직 추가.
+- **공급망 보안**: CI 빌드 과정에서 외부 바이너리(FFmpeg, Real-ESRGAN 등) SHA-256 무결성 검증 단계 도입.
+
+### ⚖️ 라이선스 및 컴플라이언스 (License & Compliance)
+- **오픈소스 고지 강화**: `THIRD_PARTY_NOTICES.md` 보강 및 각 도구의 라이선스 정보 명시.
+- **라이선스 자동 수집**: 배포 패키지에 모든 필수 라이선스 파일(`third-party-licenses/`)이 포함되도록 CI 프로세스 자동화.
+
+### 🚀 배포 자동화 (CI/CD)
+- **사이드카 바이너리 자동화**: 기존에 누락되었던 업스케일러 바이너리(Real-ESRGAN, Real-CUGAN)를 CI에서 공식 출처로부터 직접 다운로드하여 빌드에 포함.
+
 ## [2026-04-27] - 앱 정체성 강화 및 배포 자동화 수정
 
 ### 🎨 디자인 및 UI/UX
